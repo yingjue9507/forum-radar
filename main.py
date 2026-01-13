@@ -5,7 +5,7 @@ import time
 import re
 import datetime
 import urllib3
-import traceback # 引入错误追踪模块
+import traceback
 
 # 禁用SSL警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -22,20 +22,16 @@ def main(page: ft.Page):
     page.theme_mode = ft.ThemeMode.LIGHT
     page.padding = 0
 
-    # === 🛡️ 安全气囊：错误显示组件 ===
-    # 如果发生严重错误，这个文本框会显示错误信息
+    # === 错误显示组件 ===
     error_text = ft.Text("", color="red", size=14, selectable=True)
     page.add(error_text) 
 
     try:
-        # === 核心逻辑开始 ===
-
-        # 1. 定义存储函数 (加了错误保护)
+        # === 1. 存储逻辑 ===
         def get_watchlist():
             try:
                 return page.client_storage.get("my_watchlist") or []
             except Exception as e:
-                # 如果存储坏了，返回空列表，不要崩溃
                 print(f"存储读取失败: {e}")
                 return []
 
@@ -45,7 +41,7 @@ def main(page: ft.Page):
             except Exception as e:
                 print(f"存储写入失败: {e}")
 
-        # 2. 爬虫函数
+        # === 2. 爬虫函数 ===
         def fetch_json_from_api(keyword, page_num, search_type="content"):
             params = {
                 "callback": "jQuery_callback", "orderby": "saytime", "id": "67",
@@ -77,22 +73,24 @@ def main(page: ft.Page):
                 return dt.strftime("%Y-%m-%d %H:%M:%S")
             except: return str(ts)
 
-        # 3. 初始化 UI 组件
+        # === 3. 初始化 UI (兼容旧版写法) ===
+        # ⚠️ 注意：ft.Colors 改回 ft.colors，ft.Icons 改回 ft.icons
         search_type_dropdown = ft.Dropdown(
             options=[ft.dropdown.Option("content", "搜内容"), ft.dropdown.Option("user", "搜用户")],
             value="content", width=110, text_size=13, height=45, content_padding=10,
-            bgcolor=ft.Colors.WHITE, border_radius=8,
+            bgcolor=ft.colors.WHITE, border_radius=8,
         )
-        search_keyword = ft.TextField(hint_text="输入关键词...", height=45, text_size=14, expand=True, bgcolor=ft.Colors.WHITE, border_radius=8)
+        search_keyword = ft.TextField(hint_text="输入关键词...", height=45, text_size=14, expand=True, bgcolor=ft.colors.WHITE, border_radius=8)
         search_list_view = ft.Column(scroll=ft.ScrollMode.ALWAYS, expand=True)
         watchlist_view = ft.ListView(expand=True, spacing=10, padding=20)
-        status_text = ft.Text("准备就绪", size=12, color=ft.Colors.WHITE70)
+        status_text = ft.Text("准备就绪", size=12, color=ft.colors.WHITE70)
         progress_bar = ft.ProgressBar(width=400, color="amber", bgcolor="#263238", visible=False)
         
+        # ⚠️ 关键修复：改回 NavigationBarDestination 以兼容 APK 环境
         nav_bar = ft.NavigationBar(
             destinations=[
-                ft.NavigationDestination(icon=ft.Icons.SEARCH, label="实时搜索"),
-                ft.NavigationDestination(icon=ft.Icons.STAR, label="关注管理"),
+                ft.NavigationBarDestination(icon=ft.icons.SEARCH, label="实时搜索"),
+                ft.NavigationBarDestination(icon=ft.icons.STAR, label="关注管理"),
             ],
             selected_index=0
         )
@@ -101,15 +99,16 @@ def main(page: ft.Page):
         view_watchlist = ft.Container(visible=False, expand=True)
         is_running = False
 
-        # 4. 业务逻辑函数
+        # === 4. 业务逻辑 ===
         def add_result_card(user, content, time_str):
             current_list = get_watchlist()
             is_vip = user in current_list
-            card_bg = ft.Colors.AMBER_50 if is_vip else ft.Colors.WHITE
-            border_color = ft.Colors.AMBER if is_vip else "#E0E0E0"
-            user_color = ft.Colors.ORANGE_800 if is_vip else ft.Colors.BLACK87
-            icon_name = ft.Icons.STAR if is_vip else ft.Icons.ACCOUNT_CIRCLE
-            icon_color = ft.Colors.ORANGE if is_vip else ft.Colors.BLUE_GREY
+            # 兼容旧版写法
+            card_bg = ft.colors.AMBER_50 if is_vip else ft.colors.WHITE
+            border_color = ft.colors.AMBER if is_vip else "#E0E0E0"
+            user_color = ft.colors.ORANGE_800 if is_vip else ft.colors.BLACK87
+            icon_name = ft.icons.STAR if is_vip else ft.icons.ACCOUNT_CIRCLE
+            icon_color = ft.colors.ORANGE if is_vip else ft.colors.BLUE_GREY
 
             card = ft.Container(
                 content=ft.Column([
@@ -117,15 +116,15 @@ def main(page: ft.Page):
                         ft.Row([
                             ft.Icon(icon_name, size=20, color=icon_color),
                             ft.Text(user, weight=ft.FontWeight.BOLD, size=15, color=user_color),
-                            ft.Container(content=ft.Text("已关注", size=10, color="white"), bgcolor=ft.Colors.ORANGE, padding=3, border_radius=4, visible=is_vip)
+                            ft.Container(content=ft.Text("已关注", size=10, color="white"), bgcolor=ft.colors.ORANGE, padding=3, border_radius=4, visible=is_vip)
                         ]),
-                        ft.Text(time_str, size=11, color=ft.Colors.GREY_600),
+                        ft.Text(time_str, size=11, color=ft.colors.GREY_600),
                     ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    ft.Divider(height=1, color=ft.Colors.TRANSPARENT),
-                    ft.Text(content, size=14, color=ft.Colors.BLACK87, selectable=True),
+                    ft.Divider(height=1, color=ft.colors.TRANSPARENT),
+                    ft.Text(content, size=14, color=ft.colors.BLACK87, selectable=True),
                 ]),
                 padding=15, border=ft.border.all(1 if not is_vip else 2, border_color), border_radius=10, bgcolor=card_bg, margin=ft.margin.only(bottom=10, left=10, right=10),
-                shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.Colors.BLUE_GREY_50, offset=ft.Offset(0, 1))
+                shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.colors.BLUE_GREY_50, offset=ft.Offset(0, 1))
             )
             search_list_view.controls.append(card)
 
@@ -142,7 +141,7 @@ def main(page: ft.Page):
 
             is_running = True
             btn_search.text = "停止"
-            btn_search.bgcolor = ft.Colors.RED_400
+            btn_search.bgcolor = ft.colors.RED_400
             search_list_view.controls.clear()
             progress_bar.visible = True
             mode_text = "用户" if mode == "user" else "内容"
@@ -188,7 +187,7 @@ def main(page: ft.Page):
             finally:
                 is_running = False
                 btn_search.text = "搜索"
-                btn_search.bgcolor = ft.Colors.BLUE_600
+                btn_search.bgcolor = ft.colors.BLUE_600
                 progress_bar.visible = False
                 page.update()
 
@@ -201,7 +200,7 @@ def main(page: ft.Page):
             else:
                 start_search(e)
 
-        btn_search = ft.ElevatedButton("搜索", on_click=stop_search, color="white", bgcolor=ft.Colors.BLUE_600)
+        btn_search = ft.ElevatedButton("搜索", on_click=stop_search, color="white", bgcolor=ft.colors.BLUE_600)
 
         # 关注逻辑
         new_user_input = ft.TextField(hint_text="输入大神昵称", expand=True, height=40, content_padding=10)
@@ -222,70 +221,11 @@ def main(page: ft.Page):
                 watchlist_view.controls.append(
                     ft.Container(
                         content=ft.Row([
-                            ft.Row([ft.Icon(ft.Icons.STAR, color=ft.Colors.AMBER), ft.Text(user, size=16, weight="bold")]),
-                            ft.IconButton(ft.Icons.DELETE, icon_color=ft.Colors.GREY_400, tooltip="取消关注", on_click=lambda e, u=user: remove_user(u))
+                            ft.Row([ft.Icon(ft.icons.STAR, color=ft.colors.AMBER), ft.Text(user, size=16, weight="bold")]),
+                            ft.IconButton(ft.icons.DELETE, icon_color=ft.colors.GREY_400, tooltip="取消关注", on_click=lambda e, u=user: remove_user(u))
                         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        padding=15, border=ft.border.all(1, "#EEEEEE"), border_radius=8, bgcolor=ft.Colors.WHITE, ink=True,
+                        padding=15, border=ft.border.all(1, "#EEEEEE"), border_radius=8, bgcolor=ft.colors.WHITE, ink=True,
                         on_click=lambda e, u=user: jump_to_user_search(u)
                     )
                 )
             page.update()
-
-        def add_user(e):
-            name = new_user_input.value.strip()
-            current_list = get_watchlist()
-            if name and name not in current_list:
-                current_list.append(name)
-                save_watchlist_to_storage(current_list)
-                new_user_input.value = ""
-                render_watchlist()
-
-        def remove_user(name):
-            current_list = get_watchlist()
-            if name in current_list:
-                current_list.remove(name)
-                save_watchlist_to_storage(current_list)
-                render_watchlist()
-
-        # 5. 布局组装
-        view_search.content = ft.Column([
-            ft.Container(
-                content=ft.Column([
-                    ft.Text("🔍 论坛情报雷达", size=20, weight="bold", color="white"),
-                    ft.Row([search_type_dropdown, search_keyword, btn_search], spacing=5),
-                    status_text, progress_bar
-                ]), padding=20, bgcolor=ft.Colors.BLUE_800, border_radius=ft.border_radius.only(bottom_left=20, bottom_right=20)
-            ), search_list_view
-        ])
-
-        view_watchlist.content = ft.Column([
-            ft.Container(
-                content=ft.Row([new_user_input, ft.IconButton(ft.Icons.ADD_CIRCLE, icon_color=ft.Colors.BLUE, icon_size=40, on_click=add_user)]),
-                padding=20, bgcolor=ft.Colors.GREY_100
-            ), watchlist_view
-        ])
-
-        def nav_change(e):
-            index = e.control.selected_index
-            view_search.visible = (index == 0)
-            view_watchlist.visible = (index == 1)
-            if index == 1: render_watchlist()
-            page.update()
-
-        nav_bar.on_change = nav_change
-        
-        # ⚠️ 关键修正：确保移除错误提示后再加载界面
-        page.clean() 
-        page.add(ft.Column([view_search, view_watchlist], expand=True), nav_bar)
-        
-        # 延迟一秒加载关注列表，避免启动竞争
-        render_watchlist()
-
-    except Exception as e:
-        # 🚨 如果上面任何一步报错，屏幕上会显示红色错误详情 🚨
-        error_msg = traceback.format_exc()
-        error_text.value = f"启动错误:\n{e}\n\n详细信息:\n{error_msg}"
-        page.update()
-
-if __name__ == "__main__":
-    ft.app(target=main)
