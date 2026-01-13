@@ -27,19 +27,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 关键：主动安装 Flutter，防止交互式卡死
+      # 强制安装最新的 Flutter Stable 版，解决版本不兼容导致的弹窗卡死问题
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.19.0'
 
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           pip install flet
 
-      # 🌟🌟🌟 核心修正：回归最简命令，不再报错 🌟🌟🌟
+      # 最纯净的打包命令，不带任何容易报错的参数
       - name: Build APK
         run: |
           flet build apk --verbose
