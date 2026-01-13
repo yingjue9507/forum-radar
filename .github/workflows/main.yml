@@ -8,27 +8,44 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      # 1. 下载你的代码
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      # 2. 安装 Python 环境
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Install Dependencies
-      run: |
-        pip install -r requirements.txt
+      # 3. 安装 Java (安卓打包必须)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-    - name: Build APK
-      uses: flet-dev/flet-action@v1
-      with:
-        target: main.py
-        icon: icon.png    # 如果你没有上传图片，请删除这一行
-        
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: forum-radar-apk
-        path: build/apk/*.apk
+      # 4. 安装安卓 SDK 工具 (防止找不到 sdkmanager)
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 5. 安装 Python 依赖
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flet
+
+      # 6. 开始打包 (这是最关键的一步)
+      # --verbose 可以看到详细日志，方便排错
+      - name: Build APK
+        run: |
+          flet build apk --verbose
+
+      # 7. 上传打包好的 APK 供你下载
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: forum-radar-apk
+          path: build/apk/*.apk
