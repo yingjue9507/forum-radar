@@ -20,26 +20,35 @@ jobs:
       with:
         python-version: "3.11"
 
-    # 3. 设置 Flutter 环境 (Flet 打包依赖 Flutter)
+    # 3. 设置 Java 环境 (Android打包需要)
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    # 4. 设置 Flutter 环境
+    # Flet 内部其实会自己下 SDK，但这里预设好环境更稳妥，注意版本号要新
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: "3.19.x"
+        flutter-version: "3.24.x" # 更新到较新版本，配合 Flet 需求
         channel: "stable"
 
-    # 4. 安装依赖 (关键步骤！)
-    # 你的代码用到了 flet, requests, urllib3，必须在这里安装
+    # 5. 安装依赖
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flet requests urllib3
 
-    # 5. 开始打包 APK
+    # 6. 开始打包 APK (关键修改在这里！！！)
     - name: Build APK
       run: |
-        flet build apk --verbose
+        # yes 命令会不断输出 'y'，通过管道 | 传给 flet 命令
+        # 这样当 flet 问 "是否安装/继续" 时，会自动收到 'y'
+        yes | flet build apk --verbose
 
-    # 6. 上传打包好的 APK 到 GitHub Actions 供下载
+    # 7. 上传打包好的 APK
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
