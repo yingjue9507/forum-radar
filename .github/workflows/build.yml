@@ -10,35 +10,51 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. 拉取代码
     - uses: actions/checkout@v4
 
+    # 2. 设置 Python
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
 
+    # 3. 设置 Java (安卓打包必须)
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
+    # 4. 设置 Flutter
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: "3.24.x"
         channel: "stable"
 
-    - name: Install dependencies
+    # 5. 🔥 核心修改：安装和打包合并在这一步 🔥
+    # 这样能保证 flet 命令绝对能被找到
+    - name: Install and Build
       run: |
+        # 更新 pip
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        
+        # 强制安装依赖 (不依赖文件，防止文件读不到)
+        pip install flet requests urllib3
+        
+        # 确保 pip 安装的可执行文件在系统路径中 (双重保险)
+        export PATH=$PATH:$HOME/.local/bin
+        
+        # 验证 flet 是否安装成功 (这一步会在日志里显示位置，方便排错)
+        which flet || echo "Flet not found in PATH"
+        
+        # 开始打包
+        # 使用 yes | 自动回答所有 "y/n" 问题，防止卡死
+        # 使用 --verbose 查看详细日志
+        yes | flet build apk --verbose
 
-    # === 关键修改：使用 python -m flet 调用 ===
-    - name: Build APK
-      run: |
-        yes | python -m flet build apk --verbose
-
+    # 6. 上传结果
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
