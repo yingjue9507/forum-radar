@@ -5,7 +5,7 @@ import time
 import re
 import datetime
 import urllib3
-import traceback # 引入这个库用于显示详细错误信息
+import traceback
 
 # 禁用SSL警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -20,10 +20,8 @@ HEADERS = {
     "Origin": "https://qnxyl.2ldkc1pdg6fx5arh.work"
 }
 
-
 # ================= 🔧 2. 爬虫逻辑 =================
 def fetch_json_from_api(keyword, page, search_type="content"):
-    # 构造请求参数
     params = {
         "callback": "jQuery_callback", "orderby": "saytime", "id": "67",
         "key_word": keyword if search_type == "user" else "",
@@ -32,7 +30,6 @@ def fetch_json_from_api(keyword, page, search_type="content"):
         "_": int(time.time() * 1000)
     }
     try:
-        # proxies=None 强制不走系统代理，防止 10054 报错
         response = requests.get(
             API_URL, headers=HEADERS, params=params, timeout=10,
             verify=False, proxies={"http": None, "https": None}
@@ -48,7 +45,6 @@ def fetch_json_from_api(keyword, page, search_type="content"):
         print(f"Err: {e}")
     return None
 
-
 def format_timestamp(ts):
     try:
         if not ts: return ""
@@ -57,27 +53,38 @@ def format_timestamp(ts):
     except:
         return str(ts)
 
-
 # ================= 📱 3. APP 界面逻辑 =================
 def main(page: ft.Page):
-    # 🛡️ 全局错误捕获开始：防止白屏
-    try:
-        # ⚠️⚠️⚠️ 关键修复：以下代码必须注释掉或删除 ⚠️⚠️⚠️
-        # 手机系统会强制全屏，设置这些属性会导致权限错误崩溃
-        # page.window.width = 390
-        # page.window.height = 844
-        # page.window.always_on_top = True
+    # 定义全局变量作为“临时内存”，以防手机不支持存储
+    if not hasattr(page, 'memory_watchlist'):
+        page.memory_watchlist = []
 
+    # === 🛡️ 安全存储逻辑：核心修复 ===
+    def get_watchlist():
+        try:
+            # 尝试从本地存储读取
+            if hasattr(page, "client_storage") and page.client_storage:
+                return page.client_storage.get("my_watchlist") or []
+        except Exception:
+            pass # 如果报错，静默失败，转用内存
+        # 降级方案：返回内存中的列表
+        return page.memory_watchlist
+
+    def save_watchlist_to_storage(data):
+        # 先存到内存
+        page.memory_watchlist = data
+        try:
+            # 尝试存到本地
+            if hasattr(page, "client_storage") and page.client_storage:
+                page.client_storage.set("my_watchlist", data)
+        except Exception:
+            pass # 存不进去就算了，不报错
+
+    # 🛡️ 全局错误捕获：防止白屏
+    try:
         page.title = "论坛情报雷达"
         page.theme_mode = ft.ThemeMode.LIGHT
         page.padding = 0
-
-        # === 存储逻辑 (适配安卓 client_storage) ===
-        def get_watchlist():
-            return page.client_storage.get("my_watchlist") or []
-
-        def save_watchlist_to_storage(data):
-            page.client_storage.set("my_watchlist", data)
 
         # === 界面组件初始化 ===
         search_type_dropdown = ft.Dropdown(
@@ -95,8 +102,7 @@ def main(page: ft.Page):
         status_text = ft.Text("准备就绪", size=12, color=ft.Colors.WHITE70)
         progress_bar = ft.ProgressBar(width=400, color="amber", bgcolor="#263238", visible=False)
 
-        # 底部导航
-        # 🔴 关键修复：将 NavigationDestination 改为 NavigationBarDestination
+        # 底部导航 (使用兼容性写法)
         nav_bar = ft.NavigationBar(
             destinations=[
                 ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="实时搜索"),
@@ -114,7 +120,6 @@ def main(page: ft.Page):
             current_list = get_watchlist()
             is_vip = user in current_list
 
-            # VIP 高亮样式
             card_bg = ft.Colors.AMBER_50 if is_vip else ft.Colors.WHITE
             border_color = ft.Colors.AMBER if is_vip else "#E0E0E0"
             user_color = ft.Colors.ORANGE_800 if is_vip else ft.Colors.BLACK87
@@ -181,7 +186,6 @@ def main(page: ft.Page):
                     items = json_data.get('data', [])
                     if not items: break
 
-                    # 强制按时间倒序排列 (最新的在最前)
                     try:
                         items.sort(key=lambda x: int(x.get('saytime', 0) or x.get('time', 0)), reverse=True)
                     except:
@@ -222,7 +226,6 @@ def main(page: ft.Page):
         new_user_input = ft.TextField(hint_text="输入大神昵称", expand=True, height=40, content_padding=10)
 
         def jump_to_user_search(user_name):
-            """跳转并自动搜索用户"""
             nav_bar.selected_index = 0
             view_search.visible = True
             view_watchlist.visible = False
@@ -232,7 +235,6 @@ def main(page: ft.Page):
             start_search()
 
         def render_watchlist():
-            """渲染关注列表"""
             watchlist_view.controls.clear()
             current_list = get_watchlist()
             for user in current_list:
@@ -244,7 +246,6 @@ def main(page: ft.Page):
                                         on_click=lambda e, u=user: remove_user(u))
                         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                         padding=15, border=ft.border.all(1, "#EEEEEE"), border_radius=8, bgcolor=ft.Colors.WHITE, ink=True,
-                        # 点击整个卡片跳转
                         on_click=lambda e, u=user: jump_to_user_search(u)
                     )
                 )
@@ -297,13 +298,14 @@ def main(page: ft.Page):
         render_watchlist()
         page.add(ft.Column([view_search, view_watchlist], expand=True), nav_bar)
 
-    # 🛡️ 错误捕获处理
+    # 🛡️ 最后的保险：如果还有报错，显示出来
     except Exception as e:
         error_info = traceback.format_exc()
         page.clean()
         page.add(
             ft.Column([
-                ft.Text("⚠️ 启动发生严重错误", size=24, color="red", weight="bold"),
+                ft.Text("⚠️ 运行出错", size=24, color="red", weight="bold"),
+                ft.Text(f"APP版本: {ft.version.version}", size=12, color="grey"), # 打印版本号帮助排查
                 ft.Container(
                     content=ft.Text(error_info, color="yellow", size=12, selectable=True),
                     bgcolor="black", padding=10, border_radius=5
