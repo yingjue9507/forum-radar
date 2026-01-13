@@ -1,15 +1,9 @@
 name: Build Android APK
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
 
@@ -35,26 +29,18 @@ jobs:
         python -m pip install --upgrade pip
         pip install flet requests urllib3
 
-    # === 🔍 调试步骤：查看文件列表 ===
-    - name: Check file list
+    # === 调试：查看文件到底在哪里 ===
+    - name: List files
       run: ls -R
 
-    # === 🛠️ 关键修改：指定文件名 ===
-    # 请确认你的仓库里 Python 文件名是否叫 3.0.py
-    # 如果你已经改名为 main.py，请把下面命令里的 3.0.py 改成 main.py
+    # === 打包 ===
+    # 因为改名成了 main.py 且在根目录，这里不需要写文件名
     - name: Build APK
       run: |
-        yes | flet build apk 3.0.py --verbose
+        yes | flet build apk --verbose
 
-    # === 🔍 调试步骤：寻找生成的 APK 位置 ===
-    # 如果打包成功，这一步会打印出 APK 的具体位置
-    - name: Find APK
-      run: find . -name "*.apk"
-
-    # === 📦 关键修改：使用通配符上传 ===
-    # path: "**/*.apk" 会自动抓取任何文件夹下的 apk 文件
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: "**/*.apk"
+        path: build/app/outputs/flutter-apk/app-release.apk
