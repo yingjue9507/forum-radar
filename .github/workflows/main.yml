@@ -10,40 +10,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 下载你的代码
+      # 1. 下载代码
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. 安装 Python 环境
+      # 2. 安装 Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # 3. 安装 Java (安卓打包必须)
+      # 3. 安装 Java (安卓打包必须环境)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. 安装安卓 SDK 工具 (防止找不到 sdkmanager)
+      # 4. 安装安卓 SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 5. 安装 Python 依赖
+      # 🌟🌟🌟 核心修复：提前安装 Flutter，防止 Flet 运行时弹窗询问卡死 🌟🌟🌟
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      # 5. 安装 Python 依赖库
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
           pip install flet
 
-      # 6. 开始打包 (这是最关键的一步)
-      # --verbose 可以看到详细日志，方便排错
+      # 6. 开始打包 (加上 --verbose 可以看到详细进度)
       - name: Build APK
         run: |
           flet build apk --verbose
 
-      # 7. 上传打包好的 APK 供你下载
+      # 7. 上传打包好的 APK 供下载
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
