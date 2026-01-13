@@ -11,46 +11,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. 拉取代码
     - uses: actions/checkout@v4
 
-    # 2. 设置 Python 环境
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
 
-    # 3. 设置 Java 环境 (Android打包需要)
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
 
-    # 4. 设置 Flutter 环境
-    # Flet 内部其实会自己下 SDK，但这里预设好环境更稳妥，注意版本号要新
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: "3.24.x" # 更新到较新版本，配合 Flet 需求
+        flutter-version: "3.24.x"
         channel: "stable"
 
-    # 5. 安装依赖
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flet requests urllib3
 
-    # 6. 开始打包 APK (关键修改在这里！！！)
+    # === 🔍 调试步骤：查看文件列表 ===
+    - name: Check file list
+      run: ls -R
+
+    # === 🛠️ 关键修改：指定文件名 ===
+    # 请确认你的仓库里 Python 文件名是否叫 3.0.py
+    # 如果你已经改名为 main.py，请把下面命令里的 3.0.py 改成 main.py
     - name: Build APK
       run: |
-        # yes 命令会不断输出 'y'，通过管道 | 传给 flet 命令
-        # 这样当 flet 问 "是否安装/继续" 时，会自动收到 'y'
-        yes | flet build apk --verbose
+        yes | flet build apk 3.0.py --verbose
 
-    # 7. 上传打包好的 APK
+    # === 🔍 调试步骤：寻找生成的 APK 位置 ===
+    # 如果打包成功，这一步会打印出 APK 的具体位置
+    - name: Find APK
+      run: find . -name "*.apk"
+
+    # === 📦 关键修改：使用通配符上传 ===
+    # path: "**/*.apk" 会自动抓取任何文件夹下的 apk 文件
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: app-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+        path: "**/*.apk"
