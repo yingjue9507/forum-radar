@@ -27,7 +27,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 主动安装 Flutter，防止卡死
+      # 关键：主动安装 Flutter，防止交互式卡死
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -39,7 +39,7 @@ jobs:
           pip install -r requirements.txt
           pip install flet
 
-      # 🌟🌟🌟 核心修正：删掉了报错的参数，回归最简单的命令 🌟🌟🌟
+      # 🌟🌟🌟 核心修正：回归最简命令，不再报错 🌟🌟🌟
       - name: Build APK
         run: |
           flet build apk --verbose
