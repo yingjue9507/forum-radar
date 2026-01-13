@@ -27,7 +27,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 修复点1：主动安装 Flutter，防止报错
+      # 主动安装 Flutter，防止卡死
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -39,11 +39,10 @@ jobs:
           pip install -r requirements.txt
           pip install flet
 
-      # 修复点2：加上 --template-icon 指定图标
-      # 注意：确保你已经上传了 icon.png 到仓库根目录，否则删掉 --template-icon 那段
+      # 🌟🌟🌟 核心修正：删掉了报错的参数，回归最简单的命令 🌟🌟🌟
       - name: Build APK
         run: |
-          flet build apk --verbose --template-icon icon.png --module-name main
+          flet build apk --verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
