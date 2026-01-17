@@ -42,7 +42,6 @@ SCRAPE_HEADERS = {
     "Connection": "keep-alive"
 }
 
-
 # ================= 🛠️ 1. 辅助函数 =================
 
 def format_timestamp(ts):
@@ -55,21 +54,18 @@ def format_timestamp(ts):
     except:
         return str(ts)
 
-
 # ================= 🌐 2. 核心逻辑 =================
 
 def fetch_json_infinite(keyword, page_num, search_type="content"):
     callback_name = f"jQuery{int(time.time() * 1000)}_{int(time.time() * 1000)}"
     clean_keyword = keyword.strip()
-
+    
     params = {
         "callback": callback_name, "orderby": "plid", "id": "67",
         "key_word": "", "key_msg_word": "", "page": str(page_num)
     }
-    if search_type == "user":
-        params["key_word"] = clean_keyword
-    else:
-        params["key_msg_word"] = clean_keyword
+    if search_type == "user": params["key_word"] = clean_keyword
+    else: params["key_msg_word"] = clean_keyword
 
     for attempt in range(3):
         try:
@@ -84,7 +80,6 @@ def fetch_json_infinite(keyword, page_num, search_type="content"):
             time.sleep(1)
     return None
 
-
 def fetch_and_parse_data():
     all_data = []
     logs = []
@@ -93,11 +88,11 @@ def fetch_and_parse_data():
         response = requests.get(TARGET_URL, headers=SCRAPE_HEADERS, verify=False, timeout=20)
         response.encoding = 'utf-8'
         if response.status_code != 200: return [], f"状态码: {response.status_code}"
-
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         all_lis = soup.find_all("li")
         logs.append(f"🔍 发现 {len(all_lis)} 行数据")
-
+        
         processed_hashes = set()
         for li in all_lis:
             text = li.get_text(strip=True)
@@ -105,24 +100,22 @@ def fetch_and_parse_data():
             p_match = re.search(r'(\d+)\s*[期:：]', text)
             if not p_match: continue
             period = f"{p_match.group(1)}期"
-
+            
             section_name = "其他版块"
             try:
                 parent_ul = li.find_parent("ul")
                 if parent_ul:
                     prev = parent_ul.find_previous(class_=re.compile(r'(tit|head|caption|pb-tit|ptyx-tit)'))
                     if prev: section_name = prev.get_text(strip=True)
-            except:
-                pass
-
+            except: pass
+            
             content = ""
             c_match = re.search(r'(【.*?】)', text)
-            if c_match:
-                content = c_match.group(1)
+            if c_match: content = c_match.group(1)
             else:
                 parts = re.split(r'[:：]', text, 1)
                 if len(parts) > 1: content = parts[1].strip()
-
+            
             status = "准" if "准" in text else ("错" if "错" in text else ("更新中" if "更新" in text else ""))
             row_hash = f"{section_name}_{period}_{content}"
             if row_hash in processed_hashes: continue
@@ -133,13 +126,12 @@ def fetch_and_parse_data():
         return [], f"❌ 解析错误: {str(e)}"
     return all_data, "\n".join(logs)
 
-
 # ================= 📱 3. 主界面 APP =================
 
 def main(page: ft.Page):
     # 🔴 全局错误捕获 🔴
     try:
-        page.title = "情报雷达 v9.9.2"
+        page.title = "情报雷达 v9.9.3"
         page.theme_mode = ft.ThemeMode.LIGHT
         page.padding = 0
 
@@ -153,12 +145,13 @@ def main(page: ft.Page):
         seen_ids = set()
         current_search_id = [0]
         search_results_data = []
-        scrape_results_data = []
+        scrape_results_data = [] 
 
         file_picker = ft.FilePicker()
         page.overlay.append(file_picker)
 
-        def save_file_result(e: ft.FilePickerResultEvent):
+        # 🔥 关键修复：删除了这里的类型提示 : ft.FilePickerResultEvent
+        def save_file_result(e):
             if e.path:
                 try:
                     with open(e.path, "w", newline="", encoding="utf-8-sig") as f:
@@ -184,35 +177,30 @@ def main(page: ft.Page):
             hint_text="输入关键词...", height=45, expand=True, content_padding=10, bgcolor="white",
             on_submit=lambda e: start_search_click(e), border_radius=8
         )
-        btn_search = ft.ElevatedButton("开始搜索", on_click=lambda e: start_search_click(e), bgcolor=ft.Colors.BLUE_600,
-                                       color="white", height=40, expand=True)
-        btn_export = ft.ElevatedButton("导出CSV", on_click=lambda e: export_data_click(e), bgcolor=ft.Colors.GREEN_600,
-                                       color="white", height=40, expand=True, visible=False)
+        btn_search = ft.ElevatedButton("开始搜索", on_click=lambda e: start_search_click(e), bgcolor=ft.Colors.BLUE_600, color="white", height=40, expand=True)
+        btn_export = ft.ElevatedButton("导出CSV", on_click=lambda e: export_data_click(e), bgcolor=ft.Colors.GREEN_600, color="white", height=40, expand=True, visible=False)
         search_list_view = ft.ListView(expand=True, spacing=5, padding=10)
         status_text = ft.Text("准备就绪", size=12, color="white70")
         result_count = ft.Text("", size=12, color="amber")
         progress_bar = ft.ProgressBar(visible=False, color="amber", bgcolor="#263238")
-
+        
         new_user_input = ft.TextField(hint_text="输入昵称", expand=True, height=45)
         watchlist_col = ft.ListView(expand=True, spacing=10, padding=20)
-
+        
         scrape_status = ft.Text("准备就绪", color="grey")
         log_box = ft.ListView(height=80, spacing=2, padding=10, auto_scroll=True)
-
-        # 🌟 修复：加回“删”这一列
+        
         data_table = ft.DataTable(
             columns=[
-                ft.DataColumn(ft.Text("版块")),
-                ft.DataColumn(ft.Text("内容")),
+                ft.DataColumn(ft.Text("版块")), 
+                ft.DataColumn(ft.Text("内容")), 
                 ft.DataColumn(ft.Text("状态")),
-                ft.DataColumn(ft.Text("删"))  # ✅ 恢复删除列
+                ft.DataColumn(ft.Text("删"))
             ],
             rows=[], column_spacing=10, heading_row_color=ft.Colors.BLUE_50, data_row_min_height=40,
         )
-        btn_scrape = ft.ElevatedButton("一键采集", on_click=lambda e: start_scrape(e), bgcolor=ft.Colors.BLUE_600,
-                                       color="white", expand=True)
-        btn_scrape_export = ft.ElevatedButton("导出", on_click=lambda e: export_data_click(e),
-                                              bgcolor=ft.Colors.GREEN_600, color="white", expand=True, visible=False)
+        btn_scrape = ft.ElevatedButton("一键采集", on_click=lambda e: start_scrape(e), bgcolor=ft.Colors.BLUE_600, color="white", expand=True)
+        btn_scrape_export = ft.ElevatedButton("导出", on_click=lambda e: export_data_click(e), bgcolor=ft.Colors.GREEN_600, color="white", expand=True, visible=False)
 
         # --- 逻辑 ---
         def run_search_logic(e=None, manual_query=None, manual_type=None):
@@ -220,46 +208,30 @@ def main(page: ft.Page):
             current_search_id[0] = my_session_id
             keyword = manual_query if manual_query else search_keyword.value
             current_search_type = manual_type if manual_type else search_type_dropdown.value
-
+            
             if not keyword:
                 page.show_snack_bar(ft.SnackBar(ft.Text("❌ 请输入关键词")))
                 return
 
-            btn_search.text = "停止搜索";
-            btn_search.bgcolor = ft.Colors.RED_400;
-            btn_export.visible = False
-            scrape_results_data.clear();
-            search_list_view.controls.clear();
-            seen_ids.clear();
-            search_results_data.clear()
-            progress_bar.visible = True;
-            status_text.value = f"🚀 正在搜索: {keyword}...";
-            page.update()
+            btn_search.text = "停止搜索"; btn_search.bgcolor = ft.Colors.RED_400; btn_export.visible = False
+            scrape_results_data.clear(); search_list_view.controls.clear(); seen_ids.clear(); search_results_data.clear()
+            progress_bar.visible = True; status_text.value = f"🚀 正在搜索: {keyword}..."; page.update()
 
-            total_loaded = 0;
-            current_page = 1;
-            empty_retry_count = 0
+            total_loaded = 0; current_page = 1; empty_retry_count = 0
 
             try:
                 while True:
                     if current_search_id[0] != my_session_id: return
-                    status_text.value = f"正在加载第 {current_page} 页...";
-                    page.update()
+                    status_text.value = f"正在加载第 {current_page} 页..."; page.update()
                     items_list = fetch_json_infinite(keyword, current_page, current_search_type)
-
+                    
                     if items_list is None:
-                        status_text.value = "⚠️ 网络波动...";
-                        page.update();
-                        time.sleep(1);
-                        continue
+                        status_text.value = "⚠️ 网络波动..."; page.update(); time.sleep(1); continue
                     if len(items_list) == 0:
                         empty_retry_count += 1
-                        if empty_retry_count >= 2:
-                            status_text.value = f"✅ 加载完毕"; break
-                        else:
-                            current_page += 1; time.sleep(1); continue
-                    else:
-                        empty_retry_count = 0
+                        if empty_retry_count >= 2: status_text.value = f"✅ 加载完毕"; break
+                        else: current_page += 1; time.sleep(1); continue
+                    else: empty_retry_count = 0
 
                     new_controls = []
                     for item in items_list:
@@ -272,64 +244,47 @@ def main(page: ft.Page):
                         ts = format_timestamp(item.get('saytime') or item.get('time'))
                         is_vip = user in watchlist_data
                         search_results_data.append([rec_id, user, ts, clean])
-
+                        
                         new_controls.append(ft.Container(
                             content=ft.Column([
                                 ft.Row([
-                                    ft.Row([ft.Icon(ft.Icons.VERIFIED if is_vip else ft.Icons.PERSON, size=16,
-                                                    color="orange" if is_vip else "grey"),
+                                    ft.Row([ft.Icon(ft.Icons.VERIFIED if is_vip else ft.Icons.PERSON, size=16, color="orange" if is_vip else "grey"),
                                             ft.Text(user, weight="bold", color="orange" if is_vip else "black"),
                                             ft.Text(f"#{rec_id}", size=10, color="grey")]),
                                     ft.Text(ts, size=11, color="grey")
                                 ], alignment="spaceBetween"),
                                 ft.Container(height=5), ft.Text(clean, size=14, selectable=True),
-                            ]), padding=10, border_radius=8, bgcolor="yellow.50" if is_vip else "white",
-                            border=ft.border.all(1, "orange" if is_vip else "#eeeeee")
+                            ]), padding=10, border_radius=8, bgcolor="yellow.50" if is_vip else "white", border=ft.border.all(1, "orange" if is_vip else "#eeeeee")
                         ))
                         total_loaded += 1
-
+                    
                     search_list_view.controls.extend(new_controls)
                     result_count.value = f"已找到: {total_loaded} 条"
-                    page.update();
-                    current_page += 1;
-                    status_text.value = f"⏳ 冷却中...";
-                    page.update();
-                    time.sleep(3)
-            except Exception as e:
-                status_text.value = f"错误: {str(e)[:20]}"
+                    page.update(); current_page += 1; status_text.value = f"⏳ 冷却中..."; page.update(); time.sleep(3)
+            except Exception as e: status_text.value = f"错误: {str(e)[:20]}"
             finally:
                 if current_search_id[0] == my_session_id:
-                    btn_search.text = "开始搜索";
-                    btn_search.bgcolor = ft.Colors.BLUE_600;
-                    progress_bar.visible = False;
-                    status_text.value = f"✅ 完成: {total_loaded}条"
-                    if len(
-                        search_results_data) > 0: btn_export.visible = True; btn_export.text = f"导出CSV ({len(search_results_data)})"
+                    btn_search.text = "开始搜索"; btn_search.bgcolor = ft.Colors.BLUE_600; progress_bar.visible = False; status_text.value = f"✅ 完成: {total_loaded}条"
+                    if len(search_results_data) > 0: btn_export.visible = True; btn_export.text = f"导出CSV ({len(search_results_data)})"
                     page.update()
 
         def start_search_click(e):
-            if "停止" in btn_search.text:
+            if "停止" in btn_search.text: 
                 current_search_id[0] += 1
-                btn_search.text = "开始搜索";
-                btn_search.bgcolor = ft.Colors.BLUE_600;
-                progress_bar.visible = False;
-                status_text.value = "🛑 已停止"
+                btn_search.text = "开始搜索"; btn_search.bgcolor = ft.Colors.BLUE_600; progress_bar.visible = False; status_text.value = "🛑 已停止"
                 page.update()
-            else:
-                run_search_logic(e)
+            else: run_search_logic(e)
 
         def export_data_click(e):
             ts = datetime.datetime.now().strftime("%H%M%S")
             file_picker.save_file(dialog_title="保存CSV", file_name=f"Data_{ts}.csv", allowed_extensions=["csv"])
 
-        # 🌟 修复：添加删除行的逻辑
         def delete_scrape_item(e, row_data):
             if row_data in scrape_results_data:
                 scrape_results_data.remove(row_data)
-                render_scrape_table()  # 重新渲染表格
+                render_scrape_table()
                 page.show_snack_bar(ft.SnackBar(ft.Text("🗑️ 已移除"), duration=500))
 
-        # 🌟 修复：把渲染表格逻辑提取出来，方便删除后刷新
         def render_scrape_table():
             ft_rows = []
             for row in scrape_results_data:
@@ -338,21 +293,16 @@ def main(page: ft.Page):
                     ft.DataCell(ft.Text(row[0], size=10)),
                     ft.DataCell(ft.Text(row[2], size=12, width=150)),
                     ft.DataCell(ft.Text(row[3], size=12, color=color)),
-                    ft.DataCell(ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color="red", icon_size=20,
-                                              on_click=lambda e, r=row: delete_scrape_item(e, r)))  # ✅ 绑定删除事件
+                    ft.DataCell(ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color="red", icon_size=20, 
+                                              on_click=lambda e, r=row: delete_scrape_item(e, r)))
                 ]))
             data_table.rows = ft_rows
             btn_scrape_export.text = f"导出结果 ({len(scrape_results_data)})"
             page.update()
 
         def start_scrape(e):
-            btn_scrape.disabled = True;
-            btn_scrape.text = "抓取中...";
-            scrape_status.value = "🚀 请求中...";
-            page.update()
-            log_box.controls.clear();
-            scrape_results_data.clear();
-            search_results_data.clear()
+            btn_scrape.disabled = True; btn_scrape.text = "抓取中..."; scrape_status.value = "🚀 请求中..."; page.update()
+            log_box.controls.clear(); scrape_results_data.clear(); search_results_data.clear()
             data, log_str = fetch_and_parse_data()
             for line in log_str.split('\n'):
                 if line: log_box.controls.append(ft.Text(line, size=10))
@@ -360,13 +310,10 @@ def main(page: ft.Page):
                 scrape_status.value = "✅ 成功"
                 for row in data:
                     scrape_results_data.append(row)
-                render_scrape_table()  # 调用新的渲染函数
+                render_scrape_table()
                 btn_scrape_export.visible = True
-            else:
-                scrape_status.value = "❌ 失败"; btn_scrape_export.visible = False
-            btn_scrape.disabled = False;
-            btn_scrape.text = "一键采集";
-            page.update()
+            else: scrape_status.value = "❌ 失败"; btn_scrape_export.visible = False
+            btn_scrape.disabled = False; btn_scrape.text = "一键采集"; page.update()
 
         # --- 布局 ---
         view_search = ft.Column([
@@ -384,9 +331,7 @@ def main(page: ft.Page):
             for u in watchlist_data:
                 watchlist_col.controls.append(ft.Container(
                     content=ft.Row([ft.Row([ft.Icon(ft.Icons.STAR, color="amber"), ft.Text(u, size=16, weight="bold")]),
-                                    ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color="red",
-                                                  on_click=lambda e, user=u: remove_user(user))],
-                                   alignment="spaceBetween"),
+                                    ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color="red", on_click=lambda e, user=u: remove_user(user))], alignment="spaceBetween"),
                     padding=15, bgcolor="white", border=ft.border.all(1, "#eee"), border_radius=8,
                     on_click=lambda e, user=u: jump_to_search(user)
                 ))
@@ -394,33 +339,20 @@ def main(page: ft.Page):
 
         def jump_to_search(name):
             nav_bar.selected_index = 0
-            view_search.visible = True;
-            view_watch.visible = False;
-            view_scrape.visible = False
-            search_type_dropdown.value = "user";
-            clean_name = name.strip();
-            search_keyword.value = clean_name;
-            page.update()
+            view_search.visible = True; view_watch.visible = False; view_scrape.visible = False
+            search_type_dropdown.value = "user"; clean_name = name.strip(); search_keyword.value = clean_name; page.update()
             run_search_logic(manual_query=clean_name, manual_type="user")
 
         def add_user(e):
             name = new_user_input.value.strip()
             if name and name not in watchlist_data:
-                watchlist_data.append(name);
-                page.client_storage.set("watchlist", watchlist_data);
-                new_user_input.value = "";
-                render_watchlist()
-
+                watchlist_data.append(name); page.client_storage.set("watchlist", watchlist_data); new_user_input.value = ""; render_watchlist()
         def remove_user(name):
             if name in watchlist_data:
-                watchlist_data.remove(name);
-                page.client_storage.set("watchlist", watchlist_data);
-                render_watchlist()
+                watchlist_data.remove(name); page.client_storage.set("watchlist", watchlist_data); render_watchlist()
 
         view_watch = ft.Column([
-            ft.Container(content=ft.Row([new_user_input,
-                                         ft.IconButton(ft.Icons.ADD_CIRCLE, icon_color="blue", icon_size=40,
-                                                       on_click=add_user)]), padding=20),
+            ft.Container(content=ft.Row([new_user_input, ft.IconButton(ft.Icons.ADD_CIRCLE, icon_color="blue", icon_size=40, on_click=add_user)]), padding=20),
             ft.Text("  点击卡片可快速搜索", size=12, color="grey"),
             ft.Container(content=watchlist_col, expand=True)
         ], expand=True, visible=False)
@@ -436,9 +368,7 @@ def main(page: ft.Page):
 
         def nav_change(e):
             idx = e.control.selected_index
-            view_search.visible = (idx == 0);
-            view_watch.visible = (idx == 1);
-            view_scrape.visible = (idx == 2)
+            view_search.visible = (idx == 0); view_watch.visible = (idx == 1); view_scrape.visible = (idx == 2)
             if idx == 1: render_watchlist()
             page.update()
 
@@ -464,7 +394,6 @@ def main(page: ft.Page):
             ], expand=True)
         )
         page.update()
-
 
 if __name__ == "__main__":
     ft.app(target=main)
